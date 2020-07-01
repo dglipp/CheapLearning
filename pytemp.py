@@ -22,8 +22,9 @@ def d3H(mat_input, n_bins = 500, rang = None):
     return a, b, counts
 
 #input data
-data = np.random.randn(400, 256*256) + 100
-
+stamp = time.time()
+data = np.random.randn(10, 256*256*256)
+print("time to save: " + str(time.time()-stamp))
 stamp = time.time()
 #function call
 t, x, h = d3H(data, n_bins = 100)
@@ -39,6 +40,6 @@ ax.set_title("Plot title")
 ax.set_xlabel("t")
 ax.set_ylabel("variable (emission)")
 ax.set_zlabel("Counts (density)")
-fig.savefig('./buba.pdf') #change dir address on server
+#fig.savefig('./buba.pdf') #change dir address on server
 print("plotting time: " + str(time.time()-stamp))
 plt.show() #comment on server
