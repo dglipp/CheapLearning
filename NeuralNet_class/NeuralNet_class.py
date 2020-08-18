@@ -19,12 +19,24 @@ def sigmoid_activation(X):
         return df
     return s, backward
 
+@tf.custom_gradient
+def softmax(X):
+    sm = tf.exp(X)/tf.reduce_sum(tf.exp(X), axis = -1)
+    def backward(dy):
+        diag = np.array([np.diag(sm[i]) for i in range(sm.shape[0])])
+        offdiag = np.array([np.tensordot(sm[i], sm[i], axes = 0) for i in range(sm.shape[0])])
+        print(diag.shape)
+        print(offdiag.shape)
+        print(dy.shape)
+        df = (diag - offdiag)
+        return df
+    return sm, backward
+
 #define optimizer class
 class Optimizer:
     def __init__(self, learning_rate):
         self.learning_rate = learning_rate
-        self.net = net
-    
+
     def update(self, weights, derivatives):
         pass
     
@@ -130,40 +142,17 @@ class Trainer():
             X_batches, y_batches = self.create_batches(X_train, y_train, n_batches)
             for i in range(n_batches):
                 with tf.GradientTape() as tape:
-                    loss = net.get_loss(X_batches[i], y_batches[i])
+                    loss = self.net.get_loss(X_batches[i], y_batches[i])
                 train_loss.append(loss.numpy())
                 print("                                                                                ", end="\r")
                 print("epoch: " + str(n) + 
                 "\ttrain loss: " + str(np.round(loss.numpy(), 3)), end="\r")
                 grad = tape.gradient(loss, weights)
                 self.optimizer.update(weights, grad)
-            validate_loss.append(net.get_loss(X_validate, y_validate).numpy())
+            validate_loss.append(self.net.get_loss(X_validate, y_validate).numpy())
             print("                                                                                ", end="\r")
             print("epoch: " + str(n) + 
             "\ttrain loss: " + str(np.round(loss.numpy(), 3)) + 
             "\tvalidation loss: " + str(np.round(validate_loss[-1], 3)), end="\r")
             print("\n")
         return train_loss, validate_loss
-
-net = Net(1, [1000, 1], [sigmoid_activation] + [tf.identity], MSE_loss)
-
-X = np.linspace(-1,1, 100).reshape((100, 1))
-X = (X-np.mean(X, axis = 0))/np.std(X, axis = 0)
-y_real = np.exp(3*X)
-
-lr = 1e-2
-model = Trainer(net, X, y_real, Sgd(lr))
-tl,vl = model.train(30, 1, learning_rate=lr)
-y_pred = model.net.forward_pass(X)
-plt.figure()
-plt.plot(X, y_pred, "o", label ="pred", markersize = 1)
-plt.plot(X, y_real, "o", label ="real", markersize = 1)
-plt.legend()
-plt.show()
-plt.figure()
-plt.plot(tl, label="train_loss")
-plt.plot(vl, label="validate_loss")
-plt.legend()
-plt.show()
-
-
