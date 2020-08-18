@@ -6,7 +6,7 @@ import matplotlib.pyplot as plt
 @tf.custom_gradient
 def MSE_loss(y_pred, y_real):
     def backward(dy):
-        df = (y_pred - y_real)*2/y_pred.shape[1]
+        df = np.reshape(dy, y_pred.shape) * (y_pred - y_real)*2/y_pred.shape[1]
         return df, df
     return tf.reduce_mean((y_pred - y_real)**2, axis=1), backward
 
@@ -15,7 +15,7 @@ def MSE_loss(y_pred, y_real):
 def sigmoid_activation(X):
     s = 1/(1 + tf.exp(-X))
     def backward(dy):
-        df = s * (1-s)
+        df = dy * s * (1-s)
         return df
     return s, backward
 
@@ -145,7 +145,7 @@ class Trainer():
             print("\n")
         return train_loss, validate_loss
 
-net = Net(1, [1000, 1], [tf.sigmoid] + [tf.identity], tf.losses.mean_squared_error)
+net = Net(1, [1000, 1], [sigmoid_activation] + [tf.identity], MSE_loss)
 
 X = np.linspace(-1,1, 100).reshape((100, 1))
 X = (X-np.mean(X, axis = 0))/np.std(X, axis = 0)
@@ -153,7 +153,7 @@ y_real = np.exp(3*X)
 
 lr = 1e-2
 model = Trainer(net, X, y_real, Sgd(lr))
-tl,vl = model.train(1000, 1, learning_rate=lr)
+tl,vl = model.train(30, 1, learning_rate=lr)
 y_pred = model.net.forward_pass(X)
 plt.figure()
 plt.plot(X, y_pred, "o", label ="pred", markersize = 1)
