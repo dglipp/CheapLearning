@@ -1,2 +1,3 @@
 *.exec
 .DS_Store
+.vscode*
