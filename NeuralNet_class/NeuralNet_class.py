@@ -21,14 +21,12 @@ def sigmoid_activation(X):
 
 @tf.custom_gradient
 def softmax(X):
-    sm = tf.exp(X)/tf.reduce_sum(tf.exp(X), axis = -1)
+    sm = tf.exp(X)/np.reshape(tf.reduce_sum(tf.exp(X), axis = -1), (-1,1))
+
     def backward(dy):
         diag = np.array([np.diag(sm[i]) for i in range(sm.shape[0])])
         offdiag = np.array([np.tensordot(sm[i], sm[i], axes = 0) for i in range(sm.shape[0])])
-        print(diag.shape)
-        print(offdiag.shape)
-        print(dy.shape)
-        df = (diag - offdiag)
+        df = tf.reduce_sum((diag - offdiag), axis = 1)
         return df
     return sm, backward
 
