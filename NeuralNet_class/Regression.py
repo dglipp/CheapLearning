@@ -3,7 +3,7 @@ import numpy as np
 import tensorflow as tf
 import NeuralNet_class as nn
 
-net = nn.Net(1, [1000, 1], [nn.sigmoid_activation] + [tf.identity], nn.MSE_loss)
+net = nn.Net(1, [1000, 1], [nn.sigmoid_activation] + [tf.nn.softmax], nn.MSE_loss)
 
 X = np.linspace(-1,1, 100).reshape((100, 1))
 X = (X-np.mean(X, axis = 0))/np.std(X, axis = 0)
@@ -23,14 +23,3 @@ plt.plot(tl, label="train_loss")
 plt.plot(vl, label="validate_loss")
 plt.legend()
 plt.show()
-
-X = tf.convert_to_tensor(np.random.randn(3, 4))
-w = tf.Variable(tf.convert_to_tensor(np.random.randn(2, 3)))
-
-
-with tf.GradientTape(persistent=True) as tape:
-    y1 = tf.nn.softmax(w @ X)
-    #y2 = nn.softmax(w @ X)
-print(y1)
-print(tape.gradient(y1, w))
-#print(tape.gradient(y2, w))
