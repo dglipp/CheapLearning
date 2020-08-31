@@ -4,13 +4,20 @@ import matplotlib.pyplot as plt
 
 #define loss functions
 @tf.custom_gradient
-def MSE_loss(y_pred, y_real):
+def MSE_loss(y_real, y_pred):
     def backward(dy):
         df = np.reshape(dy, y_pred.shape) * (y_pred - y_real)*2/y_pred.shape[1]
         return df, df
     return tf.reduce_mean((y_pred - y_real)**2, axis=1), backward
 
-#define activation functions
+@tf.custom_gradient
+def categorical_crossentropy(y_real, y_pred):
+    loss = tf.reduce_sum(- y_real * tf.math.log(y_pred)  - (1-y_real) * tf.math.log(1 - y_pred), axis = 1)
+    def backward(dy):
+        df = np.reshape(dy, (dy.shape[0], 1))*(- y_real/(y_pred) + (1-y_real)/(1-y_pred))
+        return df, df
+    return loss, backward
+
 @tf.custom_gradient
 def sigmoid_activation(X):
     s = 1/(1 + tf.exp(-X))
@@ -20,15 +27,22 @@ def sigmoid_activation(X):
     return s, backward
 
 @tf.custom_gradient
-def softmax(X):
-    sm = tf.exp(X)/np.reshape(tf.reduce_sum(tf.exp(X), axis = -1), (-1,1))
-
+def relu_activation(X):
     def backward(dy):
-        diag = np.array([np.diag(sm[i]) for i in range(sm.shape[0])])
-        offdiag = np.array([np.tensordot(sm[i], sm[i], axes = 0) for i in range(sm.shape[0])])
-        df = tf.reduce_sum((diag - offdiag), axis = 1)
-        return df
-    return sm, backward
+        return dy*np.greater(X, 0).astype(np.float64)
+    return np.maximum(0,X), backward
+
+@tf.custom_gradient
+def tanh_activation(X):
+    t = tf.tanh(X)
+    def backward(dy):
+        return dy*(1-t**2)
+    return t, backward
+
+def to_onehot(labels):
+    labs = list(np.unique(labels))
+    onehot = np.diag(np.ones(len(labs))).tolist()
+    return dict(zip(labs, onehot))
 
 #define optimizer class
 class Optimizer:
@@ -82,7 +96,7 @@ class Net:
         X = tf.convert_to_tensor(_X)
         y_real = tf.convert_to_tensor(_y_real)
         y_pred = self.forward_pass(X)
-        return tf.reduce_mean(self.loss(y_pred, y_real))
+        return tf.reduce_mean(self.loss(y_real, y_pred))
 
     def get_weights(self):
         weights = list()
