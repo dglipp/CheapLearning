@@ -11,12 +11,15 @@ X = np.reshape(X, (X.shape[0], X.shape[1]* X.shape[2]))
 y_real = np.concatenate([np.array(mnist[0][1]), np.array(mnist[1][1])], axis=0)
 lr = 1e-1
 
-net = nn.Net(X.shape[1], [90, 10], [nn.tanh_activation] + [tf.nn.softmax], nn.categorical_crossentropy)
+net = nn.Net(X.shape[1], [90, 10], [nn.tanh_activation] + [tf.nn.softmax], nn.categorical_crossentropy, w_init=["glorot"]*2)
 convert_dict = nn.to_onehot(y_real)
 y_real_onehot = np.array([convert_dict[i] for i in y_real])
 
-model = nn.Trainer(net, X, y_real_onehot, nn.Sgd(lr, 0.4))
-tl,vl = model.train(50, 60, learning_rate=lr)
+model = nn.Trainer(net, X, y_real_onehot, nn.Sgd(lr, 0.5))
+n_epochs = 30
+n_batches = 60
+model.optimizer.set_decay(n_epochs, lr/10, decay_type="linear")
+tl,vl = model.train(n_epochs, n_batches, learning_rate=lr)
 
 fig, ax = plt.subplots(1, 2)
 ax[0].plot(tl)
