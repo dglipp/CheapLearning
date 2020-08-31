@@ -9,13 +9,14 @@ mnist = tf.keras.datasets.mnist.load_data()
 X = np.concatenate([np.array(mnist[0][0], dtype = np.double), np.array(mnist[1][0], dtype = np.double)], axis=0)
 X = np.reshape(X, (X.shape[0], X.shape[1]* X.shape[2]))
 y_real = np.concatenate([np.array(mnist[0][1]), np.array(mnist[1][1])], axis=0)
+
+X_train, y_train, X_test, y_test = nn.split_train_test(X, y_real, 0.8)
 lr = 1e-1
 
 net = nn.Net(X.shape[1], [90, 10], [nn.tanh_activation] + [tf.nn.softmax], nn.categorical_crossentropy, w_init=["glorot"]*2)
 convert_dict = nn.to_onehot(y_real)
-y_real_onehot = np.array([convert_dict[i] for i in y_real])
-
-model = nn.Trainer(net, X, y_real_onehot, nn.Sgd(lr, 0.5))
+y_train_onehot = np.array([convert_dict[i] for i in y_train])
+model = nn.Trainer(net, X_train, y_train_onehot, nn.Sgd(lr, 0.5))
 n_epochs = 30
 n_batches = 60
 model.optimizer.set_decay(n_epochs, lr/10, decay_type="linear")
@@ -28,15 +29,15 @@ ax[0].set_title("Train loss")
 ax[1].set_title("Validation loss")
 plt.show()
 
-y_pred_onehot = model.net.forward_pass(tf.convert_to_tensor(X))
+y_pred_onehot = model.net.forward_pass(tf.convert_to_tensor(X_test))
 y_pred = np.argmax(y_pred_onehot, axis = 1)
-y_real = np.argmax(y_real_onehot, axis = 1)
+#y_test = np.argmax(y_test_onehot, axis = 1)
 
-print("Accuracy: " + str(accuracy_score(y_real, y_pred)))
+print("Accuracy: " + str(accuracy_score(y_test, y_pred)))
 
-n_classes = y_real_onehot.shape[1]
+n_classes = y_train_onehot.shape[1]
 labels = np.unique(y_real)
-cm = confusion_matrix(y_real, y_pred)
+cm = confusion_matrix(y_test, y_pred)
 normalised_confusion_matrix = np.array(cm, dtype=np.float32)
 width = 4
 height = 4
@@ -55,4 +56,3 @@ plt.tight_layout()
 plt.ylabel('True label')
 plt.xlabel('Predicted label')
 plt.show()
-
