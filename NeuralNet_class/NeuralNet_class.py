@@ -53,12 +53,21 @@ class Optimizer:
         pass
     
 class Sgd(Optimizer):
-    def __init__(self, learning_rate):
+    def __init__(self, learning_rate, momentum=0):
         super().__init__(learning_rate)
+        self.momentum = momentum
+        self.prev_grad = []
+        self.first = True
 
     def update(self, parameters, derivatives):
         for i, p in enumerate(parameters):
-            p.assign_sub(self.learning_rate * derivatives[i])
+            if self.first is True:
+                p.assign_sub(self.learning_rate * derivatives[i])
+                self.prev_grad.append(derivatives[i])
+            else:
+                p.assign_sub(self.learning_rate *( derivatives[i] + self.momentum * self.prev_grad[i]))
+                self.prev_grad[i] = derivatives[i] + self.momentum * self.prev_grad[i]
+        self.first = False
 
 #define layer class
 class Layer:
