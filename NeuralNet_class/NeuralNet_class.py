@@ -18,6 +18,7 @@ def categorical_crossentropy(y_real, y_pred):
         return df, df
     return loss, backward
 
+#define activation functions
 @tf.custom_gradient
 def sigmoid_activation(X):
     s = 1/(1 + tf.exp(-X))
@@ -39,10 +40,27 @@ def tanh_activation(X):
         return dy*(1-t**2)
     return t, backward
 
+#util functions
 def to_onehot(labels):
     labs = list(np.unique(labels))
     onehot = np.diag(np.ones(len(labs))).tolist()
     return dict(zip(labs, onehot))
+
+def split_train_test(_X, _y, train_percentage):
+    X = _X.copy()
+    y = _y.copy()
+    shuffle_data(X, y)
+    X_train = X[:int(X.shape[0]*train_percentage)]
+    X_test = X[int(X.shape[0]*train_percentage):]
+    y_train = y[:int(y.shape[0]*train_percentage)]
+    y_test = y[int(y.shape[0]*train_percentage):]
+    return X_train, y_train, X_test, y_test
+    
+def shuffle_data(_X, _y):
+    rng_state = np.random.get_state()
+    np.random.shuffle(_X)
+    np.random.set_state(rng_state)
+    np.random.shuffle(_y)
 
 #define optimizer class
 class Optimizer:
