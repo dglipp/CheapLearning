@@ -15,8 +15,8 @@ net = nn.Net(X.shape[1], [90, 10], [nn.tanh_activation] + [tf.nn.softmax], nn.ca
 convert_dict = nn.to_onehot(y_real)
 y_real_onehot = np.array([convert_dict[i] for i in y_real])
 
-model = nn.Trainer(net, X, y_real_onehot, nn.Sgd(lr))
-tl,vl = model.train(10, 60, learning_rate=lr)
+model = nn.Trainer(net, X, y_real_onehot, nn.Sgd(lr, 0.4))
+tl,vl = model.train(50, 60, learning_rate=lr)
 
 fig, ax = plt.subplots(1, 2)
 ax[0].plot(tl)
