@@ -51,13 +51,28 @@ class Optimizer:
 
     def update(self, weights, derivatives):
         pass
-    
+
 class Sgd(Optimizer):
     def __init__(self, learning_rate, momentum=0):
         super().__init__(learning_rate)
-        self.momentum = momentum
+        self.momentum=momentum
         self.prev_grad = []
-        self.first = True
+        self.first=True
+        self.decay_type = None
+        self.delta_lr = 0
+
+    def set_decay(self, n_epochs, final_lr, decay_type="linear"):
+        self.decay_type=decay_type
+        if decay_type == "linear":
+            self.delta_lr = (self.learning_rate - final_lr)/(n_epochs - 1)
+        if decay_type == "exponential":
+            self.decay_type = np.power(final_lr/self.learning_rate, 1/(n_epochs -1))
+
+    def update_decay(self):
+        if self.decay_type == "linear":
+            self.learning_rate -= self.delta_lr
+        if self.decay_type == "exponential":
+            self.learning_rate *= self.delta_lr
 
     def update(self, parameters, derivatives):
         for i, p in enumerate(parameters):
@@ -68,17 +83,21 @@ class Sgd(Optimizer):
                 p.assign_sub(self.learning_rate *( derivatives[i] + self.momentum * self.prev_grad[i]))
                 self.prev_grad[i] = derivatives[i] + self.momentum * self.prev_grad[i]
         self.first = False
-
+        
 #define layer class
 class Layer:
-    def __init__(self, n_inputs, n_neurons, activation = None):
+    def __init__(self, n_inputs, n_neurons, w_init, activation = None):
         if activation == None:
             self.activation = tf.identity
         else:
             self.activation = activation
         self.n_inputs = n_inputs
         self.n_neurons = n_neurons
-        self.W = tf.Variable(tf.convert_to_tensor(np.random.randn(n_inputs, n_neurons)))
+        if w_init is None:
+            s = 1.0
+        if w_init == "glorot":
+            s = 2/(n_inputs + n_neurons)
+        self.W = tf.Variable(tf.convert_to_tensor(np.random.randn(n_inputs, n_neurons)*np.sqrt(s)))
         self.b = tf.Variable(tf.convert_to_tensor(np.zeros((1, n_neurons))))
 
     def forward(self, _X):
@@ -87,13 +106,13 @@ class Layer:
 
 #define neural net class
 class Net:
-    def __init__(self, n_inputs, layers_neurons, activations, loss):
+    def __init__(self, n_inputs, layers_neurons, activations, loss, w_init = None):
         self.numbers = [n_inputs] + layers_neurons
         self.activations = activations
         self.layers = list()
         self.loss = loss
         for i in range(len(layers_neurons)):
-            self.layers.append(Layer(self.numbers[i], self.numbers[i+1], activation = activations[i]))
+            self.layers.append(Layer(self.numbers[i], self.numbers[i+1], activation = activations[i], w_init = w_init[i]))
     
     def forward_pass(self, _X):
         y = tf.convert_to_tensor(_X)
@@ -176,4 +195,5 @@ class Trainer():
             "\ttrain loss: " + str(np.round(loss.numpy(), 3)) + 
             "\tvalidation loss: " + str(np.round(validate_loss[-1], 3)), end="\r")
             print("\n")
+            self.optimizer.update_decay()
         return train_loss, validate_loss
