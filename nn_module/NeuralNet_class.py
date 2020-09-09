@@ -104,12 +104,19 @@ class Sgd(Optimizer):
         
 #define layer class
 class Layer:
+    def __init__(self, n_inputs):
+        self.n_inputs = n_inputs
+
+    def forward(self):
+        pass
+
+class Dense(Layer):
     def __init__(self, n_inputs, n_neurons, w_init, activation = None):
+        super().__init__(n_inputs)
         if activation == None:
             self.activation = tf.identity
         else:
             self.activation = activation
-        self.n_inputs = n_inputs
         self.n_neurons = n_neurons
         if w_init is None:
             s = 1.0
@@ -122,33 +129,45 @@ class Layer:
         X = tf.convert_to_tensor(_X)
         return self.activation(X @ self.W + self.b)
 
+class Dropout(Layer):
+    def __init__(self, freq):
+        super().__init__(None)
+        self.freq = freq
+    
+    def forward(self, _X):
+        X = tf.convert_to_tensor(_X)
+        return X * np.random.binomial(1, 1-self.freq, size = X.shape)
+
 #define neural net class
 class Net:
-    def __init__(self, n_inputs, layers_neurons, activations, loss, w_init = None):
-        self.numbers = [n_inputs] + layers_neurons
-        self.activations = activations
-        self.layers = list()
+    def __init__(self, layers, loss):
+        self.layers = layers
         self.loss = loss
-        for i in range(len(layers_neurons)):
-            self.layers.append(Layer(self.numbers[i], self.numbers[i+1], activation = activations[i], w_init = w_init[i]))
+        self.l_types = (Dense)
     
-    def forward_pass(self, _X):
+    def forward_pass(self, _X, test = False):
         y = tf.convert_to_tensor(_X)
-        for l in self.layers:
-            y = l.forward(y)
+        if test:
+            for l in self.layers:
+                if isinstance(l, self.l_types):
+                    y = l.forward(y)
+        else:
+            for l in self.layers:
+                y = l.forward(y)
         return y
 
-    def get_loss(self, _X, _y_real):
+    def get_loss(self, _X, _y_real, test = False):
         X = tf.convert_to_tensor(_X)
         y_real = tf.convert_to_tensor(_y_real)
-        y_pred = self.forward_pass(X)
+        y_pred = self.forward_pass(X, test)
         return tf.reduce_mean(self.loss(y_real, y_pred))
 
     def get_weights(self):
         weights = list()
         for l in self.layers:
-            weights.append(l.W)
-            weights.append(l.b)
+            if isinstance(l, self.l_types):
+                weights.append(l.W)
+                weights.append(l.b)
         return weights
 
 #define training class
@@ -207,7 +226,7 @@ class Trainer():
                 "\ttrain loss: " + str(np.round(loss.numpy(), 3)), end="\r")
                 grad = tape.gradient(loss, weights)
                 self.optimizer.update(weights, grad)
-            validate_loss.append(self.net.get_loss(X_validate, y_validate).numpy())
+            validate_loss.append(self.net.get_loss(X_validate, y_validate, test = True).numpy())
             print("                                                                                ", end="\r")
             print("epoch: " + str(n) + 
             "\ttrain loss: " + str(np.round(loss.numpy(), 3)) + 
