@@ -1,5 +1,4 @@
 *.exec
 .DS_Store
-.vscode*
-__pycache__*
-.vscode/settings.json
+**/.vscode/**
+**/__pycache__/**
