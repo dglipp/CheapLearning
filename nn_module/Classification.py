@@ -15,9 +15,9 @@ X_train, y_train, X_test, y_test = nn.split_train_test(X, y_real, 0.8)
 lr = 1e-1
 
 net = nn.Net([nn.Dense(X.shape[1], 1000, "glorot", nn.tanh_activation),
-    nn.Dropout(0.),
+    nn.Dropout(0.4),
     nn.Dense(1000, 500, "glorot", nn.tanh_activation),
-    nn.Dropout(0.),
+    nn.Dropout(0.4),
     nn.Dense(500, 10, "glorot", tf.nn.softmax)],
     nn.categorical_crossentropy)
 convert_dict = nn.to_onehot(y_real)

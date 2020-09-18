@@ -62,6 +62,13 @@ def shuffle_data(_X, _y):
     np.random.set_state(rng_state)
     np.random.shuffle(_y)
 
+def pad(input, s, kr, kc):
+    pr = s*(input.shape[1] - 1) - input.shape[1] + kr
+    pc = s*(input.shape[2] - 1) - input.shape[2] + kc
+    b = np.zeros((input.shape[0],input.shape[1]+pr, input.shape[2]+pc))
+    b[:, int(np.floor(pr/2)):-int(np.ceil(pr/2)), int(np.floor(pc/2)):-int(np.ceil(pc/2))] = input
+    return b
+
 #define optimizer class
 class Optimizer:
     def __init__(self, learning_rate):
@@ -129,6 +136,29 @@ class Dense(Layer):
         X = tf.convert_to_tensor(_X)
         return self.activation(X @ self.W + self.b)
 
+class Convolutional(Layer):
+    def __init__(self, in_channels, out_channels, filter_dim, stride, activation = None):
+        if activation == None:
+            self.activation = tf.identity
+        else:
+            self.activation = activation
+        self.in_channels = in_channels
+        self.out_channels =out_channels
+        self.filter_dim = filter_dim
+        self.stride = stride
+        self.W = tf.Variable(tf.convert_to_tensor(np.random.randn(in_channels, out_channels, filter_dim[0], filter_dim[1])))
+    
+    def forward(self, _in):
+        inp = tf.convert_to_tensor(_in)
+        output = np.empty((inp.shape[0], self.out_channels, inp.shape[2], inp.shape[3]))
+        for i in range(inp.shape[0]):
+            x = pad(inp[i], self.stride, self.W.shape[2], self.W.shape[3])
+            for j in range(self.out_channels):
+                for r in range(inp.shape[2]):
+                    for c in range(inp.shape[3]):
+                        output[i, j, r, c] = tf.reduce_sum(x[:, r:(r + self.W.shape[2]), c:(c + self.W.shape[3])] * self.W[:,j,:,:])
+        return self.activation(output)
+
 class Dropout(Layer):
     def __init__(self, freq):
         super().__init__(None)
@@ -138,12 +168,31 @@ class Dropout(Layer):
         X = tf.convert_to_tensor(_X)
         return X * np.random.binomial(1, 1-self.freq, size = X.shape)
 
+class Pooling(Layer):
+    def __init__(self, win_dims, p_type = "max"):
+        self.win_dims = win_dims
+        if p_type == "max":
+            self.type = np.amax
+        if p_type == "avg":
+            self.type = np.mean
+        
+    def forward(self, _X):
+        X = tf.convert_to_tensor(_X)
+        if X.shape[2] % self.win_dims[0] != 0 or X.shape[3] % self.win_dims[1] != 0:
+            b = tf.Variable(tf.convert_to_tensor(np.zeros((X.shape[0], X.shape[1], X.shape[2] + X.shape[2] % self.win_dims[0], X.shape[3] + X.shape[3] % self.win_dims[1]))))
+        b[:, :, :-(X.shape[2] % self.win_dims[0]), :-(X.shape[3] % self.win_dims[1])].assign(X)
+        out = tf.Variable(tf.convert_to_tensor(np.empty((X.shape[0], X.shape[1], int(b.shape[2]/self.win_dims[0]), int(b.shape[3]/self.win_dims[1])))))
+        for i in  range(out.shape[2]):
+            for j in range(out.shape[3]):
+                out[:,:, i, j].assign(self.type(b[:,:,i*self.win_dims[0]:self.win_dims[0]*(i+1), j*self.win_dims[1]:self.win_dims[1]*(j+1)], axis=(2,3)))
+        return out
+
 #define neural net class
 class Net:
     def __init__(self, layers, loss):
         self.layers = layers
         self.loss = loss
-        self.l_types = (Dense)
+        self.l_types = (Dense, Convolutional)
     
     def forward_pass(self, _X, test = False):
         y = tf.convert_to_tensor(_X)
@@ -167,7 +216,8 @@ class Net:
         for l in self.layers:
             if isinstance(l, self.l_types):
                 weights.append(l.W)
-                weights.append(l.b)
+                if isinstance(l, Dense):
+                    weights.append(l.b)
         return weights
 
 #define training class
