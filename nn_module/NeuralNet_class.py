@@ -150,6 +150,8 @@ class Convolutional(Layer):
     
     def forward(self, _in):
         inp = tf.convert_to_tensor(_in)
+        if len(inp.shape) != 4:
+            inp = tf.reshape(inp, (inp.shape[0], 1, inp.shape[1], inp.shape[2]))
         output = np.empty((inp.shape[0], self.out_channels, inp.shape[2], inp.shape[3]))
         for i in range(inp.shape[0]):
             x = pad(inp[i], self.stride, self.W.shape[2], self.W.shape[3])
@@ -187,12 +189,30 @@ class Pooling(Layer):
                 out[:,:, i, j].assign(self.type(b[:,:,i*self.win_dims[0]:self.win_dims[0]*(i+1), j*self.win_dims[1]:self.win_dims[1]*(j+1)], axis=(2,3)))
         return out
 
+class FlattenDense(Layer):
+    def __init__(self, n_neurons, activation):
+        self.n_neurons = n_neurons
+        if activation == None:
+            self.activation = tf.identity
+        else:
+            self.activation = activation
+        self.W = tf.convert_to_tensor(np.random.randn(1, n_neurons))
+        self.b = tf.Variable(tf.convert_to_tensor(np.zeros((1, n_neurons))))
+        self.first = True
+
+    def forward(self, _X):
+        X = tf.reshape(tf.convert_to_tensor(_X), (_X.shape[0], -1))
+        if self.first:
+            self.W = tf.Variable(tf.convert_to_tensor(np.random.randn(X.shape[1], self.n_neurons)))
+            self.first = False
+        return self.activation(X @ self.W + self.b)
+
 #define neural net class
 class Net:
     def __init__(self, layers, loss):
         self.layers = layers
         self.loss = loss
-        self.l_types = (Dense, Convolutional)
+        self.l_types = (Dense, FlattenDense, Convolutional)
     
     def forward_pass(self, _X, test = False):
         y = tf.convert_to_tensor(_X)
@@ -216,7 +236,7 @@ class Net:
         for l in self.layers:
             if isinstance(l, self.l_types):
                 weights.append(l.W)
-                if isinstance(l, Dense):
+                if isinstance(l, (Dense, FlattenDense)):
                     weights.append(l.b)
         return weights
 
