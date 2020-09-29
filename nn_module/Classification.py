@@ -10,7 +10,6 @@ mnist = tf.keras.datasets.mnist.load_data()
 X = np.concatenate([np.array(mnist[0][0], dtype = np.double), np.array(mnist[1][0], dtype = np.double)], axis=0)
 X = np.reshape(X, (X.shape[0], X.shape[1]* X.shape[2]))
 y_real = np.concatenate([np.array(mnist[0][1]), np.array(mnist[1][1])], axis=0)
-
 X_train, y_train, X_test, y_test = nn.split_train_test(X, y_real, 0.8)
 lr = 1e-1
 
